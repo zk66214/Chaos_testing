@@ -880,7 +880,7 @@ class _LocalInit:
 if __name__=="__main__":
     sql = Sql.Sql('NODE66')
 
-    linkoopdb = Init('NODE66')
+    linkoopdb = Linkoopdb('NODE66')
     ip = linkoopdb.k8s_model.get_main_server_ip()
 
     pallas_pod_list = ['node649011']

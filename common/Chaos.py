@@ -172,5 +172,5 @@ class _KernelChaos:
 
 
 if __name__=="__main__":
-    Chaos = Init('NODE66')
+    Chaos = Chaos('NODE66')
     Chaos.PodChaos.pod_kill()
