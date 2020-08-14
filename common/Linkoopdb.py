@@ -79,8 +79,18 @@ class _K8SInit:
             finally:
                 if conn:
                     conn.close()
-        pass
+        return None
 
+
+    def get_backup_server_ips(self):
+        main_server_ip = self.get_main_server_ip()
+        all_server_ip = str(self.__config.get_host_ips()).split(',')
+
+        if main_server_ip:
+            all_server_ip.remove(main_server_ip)
+            return all_server_ip
+        else:
+            return None
 
     """
     创建pallas节点，并验证其状态为running
