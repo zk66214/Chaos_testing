@@ -5,7 +5,7 @@ import shutil
 from common import Log
 
 
-class Init:
+class LocalMachine:
     def __init__(self):
         self.__log = Log.MyLog()
 

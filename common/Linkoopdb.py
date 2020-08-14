@@ -5,11 +5,12 @@ from common import RemoteMachine
 from common import Log
 from common import Sql
 from common import Linux
+from common import Pod
 import time
 from jpype import *
 import jaydebeapi
 
-class Init:
+class Linkoopdb:
     def __init__(self, test_env='P1-K8S-ENV'):
         self.__env = test_env
 
@@ -27,8 +28,8 @@ class _K8SInit:
         self.__test_env = test_env
         self.__config = parse_config.ConfigUtil(self.__test_env)
         self.__k8s_bin = self.__config.get_k8s_bin_path()
-        self.__linux = RemoteMachine.Init(self.__config.get_main_server_ip(), self.__config.get_authority_user(), self.__config.get_authority_pwd())
-        self.__shell = Linux.Init(self.__config.get_main_server_ip(), self.__config.get_authority_user(), self.__config.get_authority_pwd())
+        self.__linux = RemoteMachine.RemoteMachine(self.__config.get_main_server_ip(), self.__config.get_authority_user(), self.__config.get_authority_pwd())
+        self.__shell = Linux.Linux(self.__config.get_main_server_ip(), self.__config.get_authority_user(), self.__config.get_authority_pwd())
 
         self.__log = Log.MyLog()
 
@@ -114,7 +115,7 @@ class _K8SInit:
             if not pallas_host:
                 self.__log.error('没有提供pallas_host!')
 
-            sql = Sql.Init(self.__test_env)
+            sql = Sql.Sql(self.__test_env)
 
             #判断节点是否存在，若存在，直接报错
             #result = sql.run(
@@ -123,7 +124,7 @@ class _K8SInit:
             #    raise Exception('pallas节点已存在，创建pallas节点失败！')
 
             #判断pallas节点的路径是否存在，若已存在，删除改目录
-            host = RemoteMachine.Init(pallas_host, self.__config.get_authority_user(), self.__config.get_authority_pwd())
+            host = RemoteMachine.RemoteMachine(pallas_host, self.__config.get_authority_user(), self.__config.get_authority_pwd())
             if host.dir.exists(pallas_path):
                 host.dir.delete(pallas_path)
 
@@ -143,10 +144,9 @@ class _K8SInit:
 
                     db_pod = self.__linux.kubectl.pod.get_pod_by_name(self.__config.get_pod_namespace(), pallas_name)
                     if db_pod:
-                        for (k, v) in db_pod.items():
-                            if k == pallas_name and v == 'Running':
-                                self.__log.info('成功创建db pallas节点：{0}'.format(pallas_name))
-                                return True
+                        if db_pod.pod_name == pallas_name and db_pod.pod_status == 'Running':
+                            self.__log.info('成功创建db pallas节点：{0}'.format(pallas_name))
+                            return True
                     if n != 4:
                         self.__log.info('sleep {0}s...'.format(n * base_second))
                         time.sleep(n * base_second)
@@ -156,10 +156,9 @@ class _K8SInit:
 
                 db_pod = self.__linux.kubectl.pod.get_pod_by_name(self.__config.get_pod_namespace(), pallas_name)
                 if db_pod:
-                    for (k, v) in db_pod.items():
-                        if k == pallas_name and v == 'Running':
-                            self.__log.info('成功创建db pallas节点：{0}'.format(pallas_name))
-                            return True
+                    if db_pod.pod_name == pallas_name and db_pod.pod_status == 'Running':
+                        self.__log.info('成功创建db pallas节点：{0}'.format(pallas_name))
+                        return True
                 self.__log.error('创建db pallas节点：{0}失败，请查看对应的pod状态！'.format(pallas_name))
                 return False
 
@@ -184,7 +183,7 @@ class _K8SInit:
             if not pallas_name:
                 self.__log.error('没有提供pallas_name!')
 
-            sql = Sql.Init(self.__test_env)
+            sql = Sql.Sql(self.__test_env)
             self.__log.info('开始下线db pallas节点：{0}'.format(pallas_name))
             result = sql.run("ALTER PALLAS {0} SET STATE 2".format(pallas_name))
 
@@ -237,7 +236,7 @@ class _K8SInit:
                 self.__log.error('没有提供port!')
                 return False
 
-            sql = Sql.Init(self.__test_env)
+            sql = Sql.Sql(self.__test_env)
 
             self.__log.info('开始下线db pallas节点：{0}'.format(pallas_name))
             #若节点的状态为2，恢复为1后才可以永久删除，否则会报错
@@ -273,7 +272,7 @@ class _K8SInit:
                 self.__log.error('下线db pallas节点：{0}失败！'.format(pallas_name))
                 return False
 
-            linux = RemoteMachine.Init(host, self.__config.get_authority_user(), self.__config.get_authority_pwd())
+            linux = RemoteMachine.RemoteMachine(host, self.__config.get_authority_user(), self.__config.get_authority_pwd())
             linux.dir.delete(pallas_node[0][1])
             self.__log.info('成功删除远程机器{0}上的pallas节点{1}的本地路径{2}'.format(host, pallas_name, pallas_node[0][1]))
         except Exception as e:
@@ -396,8 +395,8 @@ class _K8SInit:
             # 若pod数量不等于1,则跳过本次验证
             if len(nfs_pod) == 1:
                 # 判断pod状态是否为running
-                for (k, v) in nfs_pod.items():
-                    if v == 'Running':
+                for pod in nfs_pod:
+                    if pod.pod_status == 'Running':
                         self.__log.info('nfs server启动成功')
                         return True
                     else:
@@ -433,8 +432,8 @@ class _K8SInit:
             # 若pod个数不为4,则跳过本次验证
             if len(db_pods) == 4:
                 # 判断pod状态是否为running
-                for (k, v) in db_pods.items():
-                    if v == 'Running':
+                for pod in db_pods:
+                    if pod.pod_status == 'Running':
                         success = success + 1
                     else:
                         continue
@@ -511,8 +510,8 @@ class _K8SInit:
             # 若pod个数不为3,则跳过本次验证
             if len(db_pods) == 3:
                 # 判断pod状态是否为running
-                for (k, v) in db_pods.items():
-                    if v == 'Running':
+                for pod in db_pods:
+                    if pod.pod_status == 'Running':
                         success = success + 1
                     else:
                         continue
@@ -853,7 +852,7 @@ class _K8SInit:
     """
     def clean_db_pallas(self):
         try:
-            sql = Sql.Init()
+            sql = Sql.Sql()
             # 查询现有的pallas节点
             rows = sql.run(
                 "select HOST, concat(HOST,PORT) AS PALLAS_NAME, STORAGE_PATH, PORT, STATE from information_schema.storage_nodes")
@@ -879,7 +878,7 @@ class _LocalInit:
 
 
 if __name__=="__main__":
-    sql = Sql.Init('NODE66')
+    sql = Sql.Sql('NODE66')
 
     linkoopdb = Init('NODE66')
     ip = linkoopdb.k8s_model.get_main_server_ip()
