@@ -214,15 +214,13 @@ class _NodeInit:
 class _YarnInit:
     def __init__(self, host_ip='', login_user='', login_password=''):
         self.__config = ConfigUtil()
-        if not host_ip:
+        if not host_ip or not login_user or not login_password:
             host_ip = self.__config.get_main_server_ip()
-        if not login_user:
             login_user = self.__config.get_authority_user()
-        if not login_password:
             login_password = self.__config.get_authority_pwd()
 
         self.__linux = Init(ip=host_ip, username=login_user, password=login_password)
-        self.__linux = Linux.Init(self.__config.get_main_server_ip(), self.__config.get_authority_user(), self.__config.get_authority_pwd())
+
         self.__log = Log.MyLog()
         pass
 
