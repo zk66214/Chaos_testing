@@ -7,9 +7,6 @@ import os
 class ConfigUtil:
     def __init__(self, envInfo="P1-K8S-ENV"):
         self.__path = os.getcwd()
-        # self.__index = self.__path.find("datapps-test-platform")
-        # self.__iniFilePath = glob.glob(self.__path[:self.__index] + "datapps-test-platform" + "/conf/" + "*.ini")
-        # aa = os.path.abspath(os.path.dirname(__file__)).split('config_utils')[0]
         self.__iniFilePath = glob.glob(os.path.abspath(os.path.dirname(__file__)).split('config_utils')[0] + "conf/" + "*.ini")
         self.__driverFilePath = os.path.abspath(os.path.dirname(__file__)).split('config_utils')[0] + "driver/"
         self.__envInfo = envInfo
@@ -103,9 +100,9 @@ class ConfigUtil:
         """
         Features: 获取DB部署的机器名称
 
-        :return: mian_server_name
+        :return: main_server_name
         """
-        return self.__read_config(self.__envInfo, "mian_server_name")
+        return self.__read_config(self.__envInfo, "main_server_name")
 
     def get_k8s_bin_path(self):
         """
@@ -178,3 +175,10 @@ class ConfigUtil:
         :return: log_level
         """
         return self.__read_config(self.__envInfo, "log_level")
+
+    def get_db_jdbc_url_template(self):
+        """
+        Features: 获取db_jdbc_url_template
+        :return: db_jdbc_url_template
+        """
+        return self.__read_config(self.__envInfo, "db_jdbc_url_template")

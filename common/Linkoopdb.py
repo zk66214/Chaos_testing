@@ -6,8 +6,8 @@ from common import Log
 from common import Sql
 from common import Linux
 import time
-
-import numpy as np
+from jpype import *
+import jaydebeapi
 
 class Init:
     def __init__(self, test_env='P1-K8S-ENV'):
@@ -31,6 +31,56 @@ class _K8SInit:
         self.__shell = Linux.Init(self.__config.get_main_server_ip(), self.__config.get_authority_user(), self.__config.get_authority_pwd())
 
         self.__log = Log.MyLog()
+
+
+    def get_main_server_ip(self):
+        # driver = self.__config.get_ldb_driver_file()
+        # try:
+        #     startJVM(getDefaultJVMPath(), "-ea", "-Djava.class.path=%s" % (driver))  # 启动jvm
+        # except:
+        #     pass
+        # java.lang.System.out.println('Success')
+        # ClusterStateUtils = JClass("com.datapps.linkoopdb.jdbc.util.web.ClusterStateUtils")
+        #
+        # host_ips = str(self.__config.get_host_ips()).split(',')
+        # main_server_ip = ClusterStateUtils().queryMainServerUrl(host_ips)  # 创建类的实例，可以调用类里边的方法
+        # shutdownJVM()
+        # try:
+        #     driver = self.__config.get_ldb_driver_file()
+        #     startJVM(getDefaultJVMPath(), "-ea", "-Djava.class.path=%s" % (driver))  # 启动jvm
+        #     java.lang.System.out.println('Success')
+        #     ClusterStateUtils = JClass("com.datapps.linkoopdb.jdbc.util.web.ClusterStateUtils")
+        #     ip_list = []
+        #     ip_list.append()
+        #     host_ips = str(self.__config.get_host_ips()).split(',')
+        #     main_server_ip = ClusterStateUtils().queryMainServerUrl(host_ips) # 创建类的实例，可以调用类里边的方法
+        # except Exception:
+        #     self.__log.error('获取主server ip失败')
+        # else:
+        #     return main_server_ip
+        # finally:
+        #     shutdownJVM()  # 最后关闭jvm
+
+        driver = self.__config.get_driver()
+
+        user = self.__config.get_db_user()
+        password = self.__config.get_db_pwd()
+        jar = self.__config.get_ldb_driver_file()
+        conn = None
+        for ip in str(self.__config.get_host_ips()).split(','):
+            url = str.replace(self.__config.get_db_jdbc_url_template(), '{ip}', ip)
+            # conn = jaydebeapi.connect(driver, url, [user, password], jar, )
+            try:
+                conn = jaydebeapi.connect(driver, url, [user, password], jar, )
+            except Exception:
+                pass
+            else:
+                return ip
+            finally:
+                if conn:
+                    conn.close()
+        pass
+
 
     """
     创建pallas节点，并验证其状态为running
@@ -819,11 +869,15 @@ class _LocalInit:
 
 
 if __name__=="__main__":
-    linkoopdb = Init('P1-K8S-ENV')
+    sql = Sql.Init('NODE66')
+
+    linkoopdb = Init('NODE66')
+    ip = linkoopdb.k8s_model.get_main_server_ip()
+
     pallas_pod_list = ['node649011']
-
-    #linkoopdb.k8s_model.start_db(pallas_name_list=pallas_pod_list)
-
-    #linkoopdb.k8s_model.stop_db(pallas_name_list=pallas_pod_list)
-    pallas_name_list = ['node6440001', 'node6440002', 'node6440003', 'node6440004']
-    linkoopdb.k8s_model.verify_db_pallas_started(pallas_name_list)
+    #
+    # #linkoopdb.k8s_model.start_db(pallas_name_list=pallas_pod_list)
+    #
+    # #linkoopdb.k8s_model.stop_db(pallas_name_list=pallas_pod_list)
+    # pallas_name_list = ['node6440001', 'node6440002', 'node6440003', 'node6440004']
+    # linkoopdb.k8s_model.verify_db_pallas_started(pallas_name_list)
