@@ -224,7 +224,7 @@ class _PodInit:
 
 class _NodeInit:
     def __init__(self, host_ip, login_user, login_password):
-        self.__linux = Init(ip=host_ip, username=login_user, password=login_password)
+        self.__linux = Linux(ip=host_ip, username=login_user, password=login_password)
         pass
 #_KubectlInit -> end
 
@@ -237,7 +237,7 @@ class _YarnInit:
             login_user = self.__config.get_authority_user()
             login_password = self.__config.get_authority_pwd()
 
-        self.__linux = Init(ip=host_ip, username=login_user, password=login_password)
+        self.__linux = Linux(ip=host_ip, username=login_user, password=login_password)
 
         self.__log = Log.MyLog()
         pass
@@ -693,7 +693,7 @@ if __name__=="__main__":
     config_info = ConfigUtil()
     #host_ips = config_info.get_host_ips().split(',')
     host_ips = config_info.get_main_server_ip()
-    linux = Init(config_info.get_main_server_ip(), config_info.get_authority_user(), config_info.get_authority_pwd())
+    linux = Linux(config_info.get_main_server_ip(), config_info.get_authority_user(), config_info.get_authority_pwd())
     linux.execShell('pwd')
     linux.kubectl.pod.get_meta_pallas_pods()
     linux.kubectl.pod.get_pods()
