@@ -1,7 +1,7 @@
 from config_utils.parse_config import ConfigUtil
 from common import Log
 from common.Linkoopdb import *
-from common.ChaosObject import *
+from common.ChaosBehaviors import *
 from common.RemoteHost import *
 
 

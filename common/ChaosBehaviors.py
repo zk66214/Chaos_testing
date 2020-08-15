@@ -1,9 +1,10 @@
 from config_utils.parse_config import ConfigUtil
 from common import Log
 from common.Shell import *
+from test.LDB_ChaosTest import *
 
 
-class ChaosObject:
+class ChaosBehaviors:
     def __init__(self, test_env='NODE66'):
         self.__env = test_env
 
@@ -32,7 +33,7 @@ class _PodChaos:
     def __init__(self, test_env='NODE66'):
         self.__env = test_env
         self.__config = ConfigUtil(self.__env)
-
+        self.__namespace = self.__config.get_pod_namespace()
         self.__linux = Shell(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
                                   self.__config.get_authority_pwd())
         self.__log = Log.MyLog()
@@ -44,12 +45,19 @@ class _PodChaos:
 
         self.__linux.execShell('')
 
-    def pod_failure(self, pod_name):
+    def enable_pod_failure(self, pod_name=None):
         if not pod_name:
             self.__log.error('error')
             return True
 
-        self.__linux.execShell('')
+        LDB_ChaosTest.enable_pod_failure(pod_name, self.__namespace)
+
+    def disable_pod_failure(self, pod_name=None):
+        if not pod_name:
+            self.__log.error('error')
+            return True
+
+        LDB_ChaosTest.disable_pod_failure(pod_name, self.__namespace)
 
 
 class _NetworkChaos:
@@ -172,5 +180,5 @@ class _KernelChaos:
 
 
 if __name__=="__main__":
-    Chaos = ChaosObject('NODE66')
-    Chaos.PodChaos.pod_kill()
+    Chaos = ChaosBehaviors('NODE66')
+    Chaos.PodChaos.enable_pod_failure("linkoopdb-database-0")
