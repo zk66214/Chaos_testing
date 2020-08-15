@@ -5,7 +5,7 @@ from common import Log
 import jaydebeapi
 
 
-class Init:
+class Sql:
     def __init__(self, test_env='P1-K8S-ENV', db_type='db'):
         self.__test_env = test_env
         self.__config = parse_config.ConfigUtil(self.__test_env)

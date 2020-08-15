@@ -6,9 +6,10 @@ from config_utils.parse_config import ConfigUtil
 from common import Log
 from common import LocalMachine
 from common import Linux
+from common import Pod
 
 
-class Init:
+class RemoteMachine:
     def __init__(self, ip='', username='', password=''):
         self.__username = username
         self.__password = password
@@ -78,45 +79,31 @@ class _PodInit:
 
         all_pod_list = self.get_pods(namespace=namespace)
 
-        for (k, v) in all_pod_list.items():
-            if k == pod_name:
+        for pod in all_pod_list:
+            if pod.pod_name == pod_name:
                 self.__log.info("POD - {0}存在".format(pod_name))
                 return True
         self.__log.info("POD - {0}不存在".format(pod_name))
         return False
 
     """
-    查询pod和对应的status
-    :param namespace: pod所在的namespace，默认值p1
-    :param label_app: app标签的内容，默认为空
-    :param label_component: component标签的内容，默认为空
-    :param label_type: type标签的内容，默认为空
-    :return: 返回字典集合：Dict['{pod-name}'] = '{pod-status}'
+    查询pod的相关信息
+    :param namespace: pod所在的namespace
+    :param label: 标签的内容，默认为空
+    :return: 返回字典集合：List<Pod>
     """
-    def get_pods(self, namespace='', label_app='', label_component='', label_type=''):
+    def get_pods(self, namespace='', label=''):
         if not namespace:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        pod_info = {}
-        shell_command = 'kubectl get pod'
+        pod_info_list = []
+        shell_command = 'kubectl get pod -o wide'
         if namespace:
             shell_command = '{0} -n {1}'.format(shell_command, namespace)
 
-        if label_app or label_component or label_type:
-            shell_command = '{0} -l '.format(shell_command)
-
-        if label_app:
-            shell_command = '{0} app={1},'.format(shell_command, label_app)
-
-        if label_component:
-            shell_command = '{0}component={1},'.format(shell_command, label_component)
-
-        if label_type:
-            shell_command = '{0}type={1}'.format(shell_command, label_type)
-
-        if shell_command[-1] == ',':
-            shell_command = shell_command[0:-1]
+        if label:
+            shell_command = '{0} -l {1}'.format(shell_command, label)
 
         pod_list = self.__linux.execShell(shell_command)
 
@@ -124,11 +111,18 @@ class _PodInit:
             if not 'NAME' in line:
                 new_line = re.sub(' +', '|', line)
                 strs = new_line.split('|')
-                pod_info[strs[0]] = strs[2]
-        return pod_info
+
+                pod_info = Pod.Pod()
+                pod_info.pod_name = strs[0]
+                pod_info.pod_status = strs[2]
+                pod_info.pod_ip = strs[5]
+                pod_info.pod_node = strs[6]
+
+                pod_info_list.append(pod_info)
+        return pod_info_list
 
     """
-    查询server pod和对应的status
+    查询server pod的相关信息
     :return: 返回字典集合：Dict['{pod-name}'] = '{pod-status}'
     """
     def get_server_pods(self, namespace=''):
@@ -136,10 +130,10 @@ class _PodInit:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        return self.get_pods(namespace=namespace, label_app='ldb', label_component='server')
+        return self.get_pods(namespace=namespace, label='app.kubernetes.io/component=database')
 
     """
-    查询meta server pod和对应的status
+    查询meta server pod的相关信息
     :return: 返回字典集合：Dict['{pod-name}'] = '{pod-status}'
     """
     def get_meta_server_pods(self, namespace=''):
@@ -147,10 +141,10 @@ class _PodInit:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        return self.get_pods(namespace=namespace, label_app='lmeta', label_component='server')
+        return self.get_pods(namespace=namespace, label='')
 
     """
-    查询meta pallas pod和对应的status
+    查询meta pallas pod的相关信息
     :return: 返回字典集合：Dict['{pod-name}'] = '{pod-status}'
     """
     def get_meta_pallas_pods(self, namespace=''):
@@ -158,10 +152,10 @@ class _PodInit:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        return self.get_pods(namespace=namespace, label_app='ldb', label_component='pallas', label_type='meta')
+        return self.get_pods(namespace=namespace, label='')
 
     """
-    查询nfs server和对应的status
+    查询nfs server的相关信息
     :return: 返回字典集合：Dict['{pod-name}'] = '{pod-status}'
     """
     def get_nfs_server_pods(self, namespace=''):
@@ -169,10 +163,10 @@ class _PodInit:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        return self.get_pods(namespace=namespace, label_app='nfs', label_component='server')
+        return self.get_pods(namespace=namespace, label='app.kubernetes.io/component=nfs')
 
     """
-    查询db pallas pod和对应的status
+    查询db pallas pod的相关信息
     :return: 返回字典集合：Dict['{pod-name}'] = '{pod-status}'
     """
     def get_db_pallas_pods(self, namespace=''):
@@ -180,10 +174,34 @@ class _PodInit:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        return self.get_pods(namespace=namespace, label_app='ldb', label_component='pallas', label_type='db')
+        return self.get_pods(namespace=namespace, label='')
 
     """
-    根据pod名称查询pod名称和对应的status
+    查询db worker pod的相关信息
+    :return: 返回字典集合：Dict['{pod-name}'] = '{pod-status}'
+    """
+
+    def get_worker_pods(self, namespace=''):
+        if not namespace:
+            self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
+            namespace = self.__config.get_pod_namespace()
+
+        return self.get_pods(namespace=namespace, label='spark-role=driver')
+
+    """
+    查询db executor pod的相关信息
+    :return: 返回字典集合：Dict['{pod-name}'] = '{pod-status}'
+    """
+
+    def get_executor_pods(self, namespace=''):
+        if not namespace:
+            self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
+            namespace = self.__config.get_pod_namespace()
+
+        return self.get_pods(namespace=namespace, label='spark-role=executor')
+
+    """
+    根据pod名称查询pod名称的相关信息
     :param namespace: pod所在的namespace，默认值p1
     :param pod_name: pod的名称，必填项
     :return: 返回字典集合：Dict['{pod-name}'] = '{pod-status}'
@@ -199,14 +217,14 @@ class _PodInit:
 
         all_pod_list = self.get_pods(namespace=namespace)
 
-        for (k, v) in all_pod_list.items():
-            if k == pod_name:
-                return {k: v}
+        for pod in all_pod_list:
+            if pod.pod_name == pod_name:
+                return pod
         return None
 
 class _NodeInit:
     def __init__(self, host_ip, login_user, login_password):
-        self.__linux = Init(ip=host_ip, username=login_user, password=login_password)
+        self.__linux = Linux(ip=host_ip, username=login_user, password=login_password)
         pass
 #_KubectlInit -> end
 
@@ -214,15 +232,13 @@ class _NodeInit:
 class _YarnInit:
     def __init__(self, host_ip='', login_user='', login_password=''):
         self.__config = ConfigUtil()
-        if not host_ip:
+        if not host_ip or not login_user or not login_password:
             host_ip = self.__config.get_main_server_ip()
-        if not login_user:
             login_user = self.__config.get_authority_user()
-        if not login_password:
             login_password = self.__config.get_authority_pwd()
 
-        self.__linux = Init(ip=host_ip, username=login_user, password=login_password)
-        self.__linux = Linux.Init(self.__config.get_main_server_ip(), self.__config.get_authority_user(), self.__config.get_authority_pwd())
+        self.__linux = Linux(ip=host_ip, username=login_user, password=login_password)
+
         self.__log = Log.MyLog()
         pass
 
@@ -677,7 +693,7 @@ if __name__=="__main__":
     config_info = ConfigUtil()
     #host_ips = config_info.get_host_ips().split(',')
     host_ips = config_info.get_main_server_ip()
-    linux = Init(config_info.get_main_server_ip(), config_info.get_authority_user(), config_info.get_authority_pwd())
+    linux = Linux(config_info.get_main_server_ip(), config_info.get_authority_user(), config_info.get_authority_pwd())
     linux.execShell('pwd')
     linux.kubectl.pod.get_meta_pallas_pods()
     linux.kubectl.pod.get_pods()
