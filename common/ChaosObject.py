@@ -1,6 +1,6 @@
 from config_utils.parse_config import ConfigUtil
 from common import Log
-from common.Linux import *
+from common.Shell import *
 
 
 class ChaosObject:
@@ -33,7 +33,7 @@ class _PodChaos:
         self.__env = test_env
         self.__config = ConfigUtil(self.__env)
 
-        self.__linux = Linux(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
+        self.__linux = Shell(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
                                   self.__config.get_authority_pwd())
         self.__log = Log.MyLog()
 
@@ -57,7 +57,7 @@ class _NetworkChaos:
         self.__env = test_env
         self.__config = ConfigUtil(self.__env)
 
-        self.__linux = Linux(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
+        self.__linux = Shell(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
                                   self.__config.get_authority_pwd())
         self.__log = Log.MyLog()
 
@@ -108,7 +108,7 @@ class _IOChaos:
         self.__env = test_env
         self.__config = ConfigUtil(self.__env)
 
-        self.__linux = Linux(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
+        self.__linux = Shell(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
                                   self.__config.get_authority_pwd())
         self.__log = Log.MyLog()
 
@@ -131,7 +131,7 @@ class _TimeChaos:
         self.__env = test_env
         self.__config = ConfigUtil(self.__env)
 
-        self.__linux = Linux(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
+        self.__linux = Shell(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
                                   self.__config.get_authority_pwd())
         self.__log = Log.MyLog()
 
@@ -148,7 +148,7 @@ class _CPUChaos:
         self.__env = test_env
         self.__config = ConfigUtil(self.__env)
 
-        self.__linux = Linux(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
+        self.__linux = Shell(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
                                   self.__config.get_authority_pwd())
         self.__log = Log.MyLog()
 
@@ -165,7 +165,7 @@ class _KernelChaos:
         self.__env = test_env
         self.__config = ConfigUtil(self.__env)
 
-        self.__linux = Linux(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
+        self.__linux = Shell(self.__config.get_main_server_ip(), self.__config.get_authority_user(),
                                   self.__config.get_authority_pwd())
         self.__log = Log.MyLog()
     pass

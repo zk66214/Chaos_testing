@@ -4,12 +4,13 @@ import re
 import os
 from config_utils.parse_config import ConfigUtil
 from common import Log
-from common import LocalMachine
-from common import Linux
-from common import Pod
+from common.LocalHost import *
+from common.Shell import *
+from common.Pod import *
+from common.EnumPodLabel import *
 
 
-class RemoteMachine:
+class RemoteHost:
     def __init__(self, ip='', username='', password=''):
         self.__username = username
         self.__password = password
@@ -18,11 +19,11 @@ class RemoteMachine:
 
     @property
     def yarn(self):
-        return _YarnInit(self.__sys_ip, self.__username, self.__password)
+        return _Yarn(self.__sys_ip, self.__username, self.__password)
 
     @property
     def kubectl(self):
-        return _KubectlInit(self.__sys_ip, self.__username, self.__password)
+        return _Kubectl(self.__sys_ip, self.__username, self.__password)
 
     @property
     def dir(self):
@@ -33,7 +34,7 @@ class RemoteMachine:
         return _RemoteFileInit(self.__sys_ip, self.__username, self.__password)
 
 #_KubectlInit -> begin
-class _KubectlInit:
+class _Kubectl:
     def __init__(self, host_ip, login_user, login_password):
         self.__host_ip = host_ip
         self.__login_user = login_user
@@ -41,13 +42,13 @@ class _KubectlInit:
 
     @property
     def pod(self):
-        return _PodInit(self.__host_ip, self.__login_user, self.__login_password)
+        return _Pod(self.__host_ip, self.__login_user, self.__login_password)
 
     @property
     def node(self):
-        return _NodeInit(self.__host_ip, self.__login_user, self.__login_password)
+        return _Node(self.__host_ip, self.__login_user, self.__login_password)
 
-class _PodInit:
+class _Pod:
     def __init__(self, host_ip='', login_user='', login_password=''):
         self.__config = ConfigUtil()
         if not host_ip:
@@ -57,7 +58,7 @@ class _PodInit:
         if not login_password:
             login_password = self.__config.get_authority_pwd()
 
-        self.__linux = Linux.Init(ip=host_ip, username=login_user, password=login_password)
+        self.__linux = Shell(ip=host_ip, username=login_user, password=login_password)
         self.__log = Log.MyLog()
 
 
@@ -112,7 +113,7 @@ class _PodInit:
                 new_line = re.sub(' +', '|', line)
                 strs = new_line.split('|')
 
-                pod_info = Pod.Pod()
+                pod_info = Pod()
                 pod_info.pod_name = strs[0]
                 pod_info.pod_status = strs[2]
                 pod_info.pod_ip = strs[5]
@@ -130,7 +131,7 @@ class _PodInit:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        return self.get_pods(namespace=namespace, label='app.kubernetes.io/component=database')
+        return self.get_pods(namespace=namespace, label=PodLabel.SERVER.value)
 
     """
     查询meta server pod的相关信息
@@ -141,7 +142,7 @@ class _PodInit:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        return self.get_pods(namespace=namespace, label='')
+        return self.get_pods(namespace=namespace, label=PodLabel.META_SERVER.value)
 
     """
     查询meta pallas pod的相关信息
@@ -152,7 +153,7 @@ class _PodInit:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        return self.get_pods(namespace=namespace, label='')
+        return self.get_pods(namespace=namespace, label=PodLabel.META_PALLAS.value)
 
     """
     查询nfs server的相关信息
@@ -163,7 +164,7 @@ class _PodInit:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        return self.get_pods(namespace=namespace, label='app.kubernetes.io/component=nfs')
+        return self.get_pods(namespace=namespace, label=PodLabel.NFS.value)
 
     """
     查询db pallas pod的相关信息
@@ -174,7 +175,7 @@ class _PodInit:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        return self.get_pods(namespace=namespace, label='')
+        return self.get_pods(namespace=namespace, label=PodLabel.PALLAS.value)
 
     """
     查询db worker pod的相关信息
@@ -186,7 +187,7 @@ class _PodInit:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        return self.get_pods(namespace=namespace, label='spark-role=driver')
+        return self.get_pods(namespace=namespace, label=PodLabel.WORKER.value)
 
     """
     查询db executor pod的相关信息
@@ -198,7 +199,7 @@ class _PodInit:
             self.__log.info('没有指定namespace，使用默认值：{0}'.format(self.__config.get_pod_namespace()))
             namespace = self.__config.get_pod_namespace()
 
-        return self.get_pods(namespace=namespace, label='spark-role=executor')
+        return self.get_pods(namespace=namespace, label=PodLabel.EXECUTOR.value)
 
     """
     根据pod名称查询pod名称的相关信息
@@ -222,14 +223,14 @@ class _PodInit:
                 return pod
         return None
 
-class _NodeInit:
+class _Node:
     def __init__(self, host_ip, login_user, login_password):
-        self.__linux = Linux(ip=host_ip, username=login_user, password=login_password)
+        self.__linux = Shell(ip=host_ip, username=login_user, password=login_password)
         pass
 #_KubectlInit -> end
 
 #_YarnInit -> begin
-class _YarnInit:
+class _Yarn:
     def __init__(self, host_ip='', login_user='', login_password=''):
         self.__config = ConfigUtil()
         if not host_ip or not login_user or not login_password:
@@ -237,7 +238,7 @@ class _YarnInit:
             login_user = self.__config.get_authority_user()
             login_password = self.__config.get_authority_pwd()
 
-        self.__linux = Linux(ip=host_ip, username=login_user, password=login_password)
+        self.__linux = Shell(ip=host_ip, username=login_user, password=login_password)
 
         self.__log = Log.MyLog()
         pass
@@ -375,7 +376,7 @@ class _RemoteDirInit:
 
         self.__remote_ip = remote_ip
 
-        self.__linux = Linux.Init(ip=self.__remote_ip, username=self.__username, password=self.__password)
+        self.__linux = Shell(ip=self.__remote_ip, username=self.__username, password=self.__password)
         self.__log = Log.MyLog()
 
     """
@@ -457,14 +458,14 @@ class _RemoteFileInit():
 
         self.__remote_ip = remote_ip
 
-        self.__linux = Linux.Init(ip=self.__remote_ip, username=self.__username, password=self.__password)
+        self.__linux = Shell(ip=self.__remote_ip, username=self.__username, password=self.__password)
 
         self.__ssh = self.__linux.get_ssh()
 
         self.__sftp = self.__ssh.open_sftp()
 
         self.__log = Log.MyLog()
-        self.__localMachine = LocalMachine.Init()
+        self.__localMachine = LocalHost()
 
         self.__work_folder = self.__localMachine.Dir.get_work_folder()
 
@@ -693,8 +694,8 @@ if __name__=="__main__":
     config_info = ConfigUtil()
     #host_ips = config_info.get_host_ips().split(',')
     host_ips = config_info.get_main_server_ip()
-    linux = Linux(config_info.get_main_server_ip(), config_info.get_authority_user(), config_info.get_authority_pwd())
+    linux = Shell(config_info.get_main_server_ip(), config_info.get_authority_user(), config_info.get_authority_pwd())
     linux.execShell('pwd')
-    linux.kubectl.pod.get_meta_pallas_pods()
-    linux.kubectl.pod.get_pods()
-    linux.yarn.list_app()
+    # linux.kubectl.pod.get_meta_pallas_pods()
+    # linux.kubectl.pod.get_pods()
+    # linux.yarn.list_app()

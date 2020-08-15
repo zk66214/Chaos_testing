@@ -9,7 +9,7 @@ from config_utils import parse_config
 #pip3 install pycrypto
 #pip3 install paramiko
 
-class Linux:
+class Shell:
     def __init__(self, ip='', username='', password=''):
         self.__username = username
         self.__password = password

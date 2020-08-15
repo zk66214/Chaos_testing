@@ -2,7 +2,7 @@ from config_utils.parse_config import ConfigUtil
 from common import Log
 from common.Linkoopdb import *
 from common.ChaosObject import *
-from common.RemoteMachine import *
+from common.RemoteHost import *
 
 
 class ChaosTestScenarios:
@@ -42,7 +42,7 @@ class ChaosTestScenarios:
 
 
 if __name__=="__main__":
-    remoteMachine = RemoteMachine('192.168.1.64','root', '123456')
+    remoteMachine = RemoteHost('192.168.1.64', 'root', '123456')
     remoteMachine.kubectl.pod.get_server_pods()
 
     chaosTestEnv = ChaosTestScenarios('NODE66')
