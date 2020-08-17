@@ -1,11 +1,11 @@
 from config_utils.parse_config import ConfigUtil
 from common import Log
 from common.Shell import *
-from test.LDB_ChaosTest import *
+from common.LDB_ChaosTest import *
 
 
 class ChaosBehaviors:
-    def __init__(self, test_env='NODE66'):
+    def __init__(self, test_env=None):
         self.__env = test_env
 
     @property
