@@ -9,6 +9,10 @@ from common.Shell import *
 from common.Pod import *
 from common.EnumPodLabel import *
 
+class RemoteHostException(Exception):
+    def __init__(self, message):
+        Exception.__init__(self)
+        self.message = message
 
 class RemoteHost:
     def __init__(self, ip='', username='', password=''):
@@ -54,17 +58,22 @@ class _RemoteDirInit:
     """
 
     def exists(self, remote):
-        return True if self.__linux.execShell("[ -d '{0}' ] && echo 1 || echo 0".format(remote))[
+        try:
+            return True if self.__linux.execShell("[ -d '{0}' ] && echo 1 || echo 0".format(remote))[
                            0].strip() == "1" else False
-
+        except Exception as e:
+            raise RemoteHostException('Failed to check folder status, exception is %s' % e)
     """
     判断是否是目录
     :return: true/false
     """
 
     def isDir(self, remote):
-        return True if self.__linux.execShell("[ -d '{0}' ] && echo 1 || echo 0".format(remote))[
+        try:
+            return True if self.__linux.execShell("[ -d '{0}' ] && echo 1 || echo 0".format(remote))[
                            0].strip() == "1" else False
+        except Exception as e:
+            raise RemoteHostException('Failed to check folder status, exception is %s' % e)
     """
     新建文件夹，若该文件夹已存在，则跳过
     :param new_file: 文件路径，不能为空
@@ -72,19 +81,21 @@ class _RemoteDirInit:
     """
 
     def create(self, remote_dir):
+        try:
+            if self.exists(remote_dir):
+                self.__log.info("文件夹{0}已存在！".format(remote_dir))
+                return True
 
-        if self.exists(remote_dir):
-            self.__log.info("文件夹{0}已存在！".format(remote_dir))
+            self.__linux.execShell("mkdir {0}".format(remote_dir))
+
+            if not self.exists(remote_dir):
+                self.__log.error("新建文件夹{0}失败！".format(remote_dir))
+                return False
+
+            self.__log.info("新建文件夹{0}成功！".format(remote_dir))
             return True
-
-        self.__linux.execShell("mkdir {0}".format(remote_dir))
-
-        if not self.exists(remote_dir):
-            self.__log.error("新建文件夹{0}失败！".format(remote_dir))
-            return False
-
-        self.__log.info("新建文件夹{0}成功！".format(remote_dir))
-        return True
+        except Exception as e:
+            raise RemoteHostException('Failed to create folder, exception is %s' % e)
 
     """
     删除远程机器上的文件夹
@@ -93,18 +104,22 @@ class _RemoteDirInit:
     """
 
     def delete(self, remote_dir):
-        if not self.exists(remote_dir):
-            self.__log.warning("文件夹{0}不存在！".format(remote_dir))
+        try:
+            if not self.exists(remote_dir):
+                self.__log.warning("文件夹{0}不存在！".format(remote_dir))
+                return True
+
+            self.__linux.execShell("rm -rf {0}".format(remote_dir))
+
+            if self.exists(remote_dir):
+                self.__log.error("删除文件夹{0}失败！".format(remote_dir))
+                return False
+
+            self.__log.info("删除文件夹{0}成功！".format(remote_dir))
             return True
 
-        self.__linux.execShell("rm -rf {0}".format(remote_dir))
-
-        if self.exists(remote_dir):
-            self.__log.error("删除文件夹{0}失败！".format(remote_dir))
-            return False
-
-        self.__log.info("删除文件夹{0}成功！".format(remote_dir))
-        return True
+        except Exception as e:
+            raise RemoteHostException('Failed to delete folder, exception is %s' % e)
 # RemoteDir -> end
 
 # RemoteFile -> begin
@@ -147,8 +162,11 @@ class _RemoteFileInit():
     """
 
     def exists(self, remote_file):
-        return True if self.__linux.execShell("[ -e '{0}' ] && echo 1 || echo 0".format(remote_file))[
+        try:
+            return True if self.__linux.execShell("[ -e '{0}' ] && echo 1 || echo 0".format(remote_file))[
                            0].strip() == "1" else False
+        except Exception as e:
+            raise RemoteHostException('Failed to check file status, exception is %s' % e)
 
     """
     判断是否是目录
@@ -156,8 +174,11 @@ class _RemoteFileInit():
     """
 
     def isFile(self, remote_file):
-        return True if self.__linux.execShell("[ -f '{0}' ] && echo 1 || echo 0".format(remote_file))[
+        try:
+            return True if self.__linux.execShell("[ -f '{0}' ] && echo 1 || echo 0".format(remote_file))[
                            0].strip() == "1" else False
+        except Exception as e:
+            raise RemoteHostException('Failed to check file status, exception is %s' % e)
 
     """
     新建文件并添加内容，若该文件已存在，则删除后重新创建
@@ -182,7 +203,7 @@ class _RemoteFileInit():
             return True
         except Exception as e:
             self.__log.error('新建远程文件失败，异常信息:', e)
-            return False
+            raise RemoteHostException('Failed to create file, exception is %s' % e)
 
     """
     批量替换文件中指定的字符串
@@ -210,7 +231,7 @@ class _RemoteFileInit():
             return True
         except Exception as e:
             self.__log.error('更新远程文件失败，异常信息:', e)
-            return False
+            raise RemoteHostException('Failed to update file, exception is %s' % e)
 
     """
     在文件后追加内容
@@ -239,7 +260,7 @@ class _RemoteFileInit():
             return True
         except Exception as e:
             self.__log.error('更新远程文件失败，异常信息:', e)
-            return False
+            raise RemoteHostException('Failed to append content to the file, exception is %s' % e)
 
     """
     删除远程机器上的文件
@@ -248,14 +269,16 @@ class _RemoteFileInit():
     """
 
     def delete(self, remote_file):
-        self.__linux.execShell('rm -f {0}'.format(remote_file))
+        try:
+            self.__linux.execShell('rm -f {0}'.format(remote_file))
 
-        if self.exists(remote_file):
-            self.__log.error('删除文件{0}失败！'.format(remote_file))
-            return False
+            if self.exists(remote_file):
+                self.__log.error('删除文件{0}失败！'.format(remote_file))
+                return False
 
-        self.__log.info('成功删除文件{0}！'.format(remote_file))
-        return False
+            self.__log.info('成功删除文件{0}！'.format(remote_file))
+        except Exception as e:
+            raise RemoteHostException('Failed to delete file, exception is %s' % e)
 
     """
     拷贝本地文件到远程机器
@@ -292,6 +315,7 @@ class _RemoteFileInit():
 
         except Exception as e:
             self.__log.error('拷贝本地文件{1}到远程机器{0}:{2}失败！异常信息：{4}'.format(self.__remote_ip, local, remote, str(e)))
+            raise RemoteHostException('拷贝本地文件{1}到远程机器{0}:{2}失败！异常信息：{4}'.format(self.__remote_ip, local, remote, str(e)))
 
     """
     拷贝远程机器文件到本地
@@ -329,6 +353,7 @@ class _RemoteFileInit():
                                                                          os.path.join(remote + f)))
         except Exception as e:
             self.__log.error('拷贝远程文件{0}:{2}到本地目录{1}失败，异常信息：{3}'.format(self.__remote_ip, remote,local, str(e)))
+            raise RemoteHostException('拷贝远程文件{0}:{2}到本地目录{1}失败，异常信息：{3}'.format(self.__remote_ip, remote,local, str(e)))
 
     """
     查找包含key的行，替换为new_str
@@ -355,7 +380,8 @@ class _RemoteFileInit():
             self.__log.info('替换文件{0}下包含关键字符{1}的行内容成功'.format(remote_file, key))
         except Exception as e:
             self.__log.error('替换文件{0}下包含关键字符{1}的行内容失败！异常信息：{2}'.format(remote_file, key, str(e)))
-        return None
+            raise RemoteHostException('替换文件{0}下包含关键字符{1}的行内容失败！异常信息：{2}'.format(remote_file, key, str(e)))
+
 # RemoteFile -> end
 
 if __name__=="__main__":
