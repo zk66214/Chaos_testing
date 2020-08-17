@@ -46,6 +46,6 @@ class Pod(object):
     def pod_labels(self):
         return self._pod_labels
 
-    @pod_node.setter
+    @pod_labels.setter
     def pod_labels(self, value):
         self._pod_labels = value

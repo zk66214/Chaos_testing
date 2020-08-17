@@ -65,6 +65,7 @@ class K8SHandler():
                     m_Pod.pod_ip = i.status.pod_ip
                     m_Pod.pod_status = i.status.phase
                     m_Pod.pod_node = i.spec.node_name
+                    m_Pod.pod_labels = i.metadata.labels
                     m_Pods.append(copy.copy(m_Pod))
             else:
                 m_Pod = Pod()
@@ -72,6 +73,7 @@ class K8SHandler():
                 m_Pod.pod_ip = i.status.pod_ip
                 m_Pod.pod_status = i.status.phase
                 m_Pod.pod_node = i.spec.node_name
+                m_Pod.pod_labels = i.metadata.labels
                 m_Pods.append(copy.copy(m_Pod))
         return m_Pods
 
@@ -129,6 +131,7 @@ if __name__ == '__main__':
         print("pod_id = " + row.pod_ip)
         print("Name = " + row.pod_node)
         print("Status = " + row.pod_status)
+        print("Labels = " + str(row.pod_labels))
 
 
 

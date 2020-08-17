@@ -1,10 +1,8 @@
 # -*- coding:utf-8 -*-
 
-from kubernetes import client
-from kubernetes.client.rest import ApiException
-import urllib3
 import sys
 import re
+import time
 from common.K8SHandler import K8SHandler, K8SHandlerException
 
 
@@ -21,7 +19,8 @@ class LDB_ChaosTest():
         self.m_K8SHandler = K8SHandler(p_APIServer, p_Token)
 
     CHAOS_COMMANDS = \
-        {'pod_failure':
+        {
+            'pod_failure':
             {
                 "apiVersion": "chaos-mesh.org/v1alpha1",
                 "kind": "PodChaos",
@@ -45,6 +44,29 @@ class LDB_ChaosTest():
                         "cron": "@every 2m"
                     }
                 }
+            },
+            'pod_kill':
+            {
+                "apiVersion": "chaos-mesh.org/v1alpha1",
+                "kind": "PodChaos",
+                "metadata": {
+                    "name": "pod-kill-example",
+                    "namespace": "chaos-testing"
+                },
+                "spec": {
+                    "action": "pod-kill",
+                    "mode": "one",
+                    "selector": {
+                        "pods": {
+                            "ldb-test": [
+                                "linkoopdb-database-2"
+                                ]
+                        }
+                    },
+                    "scheduler": {
+                        "cron": "@every 1m"
+                    }
+                }
             }
         }
 
@@ -60,8 +82,19 @@ class LDB_ChaosTest():
         return self.m_K8SHandler.UndoKubectlCommand(m_JsonCommand)
 
     def pod_kill(self, p_szPodGroups, p_szNameSpace):
-
-        pass
+        m_JsonCommand = self.CHAOS_COMMANDS['pod_kill']
+        m_Pods = self.m_K8SHandler.List_Pods(p_szNameSpace=p_szNameSpace)
+        m_TargetPods = []
+        for m_Pod in m_Pods:
+            if re.match(p_szPodGroups, m_Pod.pod_name):
+                m_TargetPods.append(m_Pod.pod_name)
+        m_JsonCommand['spec']['selector']['pods'][p_szNameSpace] = m_TargetPods
+        # 杀掉进程后，休息2S，随后取消掉杀进程的配置
+        resp = self.m_K8SHandler.DoKubectlCommand(m_JsonCommand)
+        print("resp = [" + str(resp) + "]")
+        time.sleep(2)
+        resp = self.m_K8SHandler.UndoKubectlCommand(m_JsonCommand)
+        print("resp = [" + str(resp) + "]")
 
     def enable_pod_failure(self, p_szPodGroups, p_szNameSpace):
         m_JsonCommand = self.CHAOS_COMMANDS['pod_failure']
@@ -88,5 +121,7 @@ if __name__ == '__main__':
     m_ChaoTest = LDB_ChaosTest()
     m_ChaoTest.ConnectK8S(p_APIServer=APISERVER, p_Token=Token)
     # m_ChaoTest.enable_pod_failure("busybox.*", 'ldb-test')
-    m_ChaoTest.disable_pod_failure("busybox.*", 'ldb-test')
+    # m_ChaoTest.disable_pod_failure("busybox.*", 'ldb-test')
+    m_ChaoTest.pod_kill("busybox.*", 'ldb-test')
+
 
