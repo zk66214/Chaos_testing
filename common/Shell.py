@@ -15,7 +15,7 @@ class Shell:
         self.__password = password
         self.__sys_ip = ip
         self.__log = Log.MyLog()
-        self.__config = parse_config.ConfigUtil("LOG")
+        self.__config = parse_config.ConfigUtil("DEFAULT")
         self.__log_level = self.__config.get_log_level()
 
     #ssh连接linux
