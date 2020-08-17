@@ -5,6 +5,7 @@ class Pod(object):
     _pod_status = None
     _pod_node = None
     _pod_name = None
+    _pod_labels = None
 
     def __init__(self):
         pass
@@ -40,3 +41,11 @@ class Pod(object):
     @pod_node.setter
     def pod_node(self, value):
         self._pod_node = value
+
+    @property
+    def pod_labels(self):
+        return self._pod_labels
+
+    @pod_node.setter
+    def pod_labels(self, value):
+        self._pod_labels = value
