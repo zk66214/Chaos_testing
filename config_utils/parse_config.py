@@ -5,7 +5,7 @@ import glob
 import os
 
 class ConfigUtil:
-    def __init__(self, envInfo="P1-K8S-ENV"):
+    def __init__(self, envInfo=None):
         self.__path = os.getcwd()
         self.__iniFilePath = glob.glob(os.path.abspath(os.path.dirname(__file__)).split('config_utils')[0] + "conf/" + "*.ini")
         self.__driverFilePath = os.path.abspath(os.path.dirname(__file__)).split('config_utils')[0] + "driver/"
@@ -182,3 +182,24 @@ class ConfigUtil:
         :return: db_jdbc_url_template
         """
         return self.__read_config(self.__envInfo, "db_jdbc_url_template")
+
+    def get_config_name(self):
+        """
+        Features: 获取config_name
+        :return: config_name
+        """
+        return self.__read_config(self.__envInfo, "config_name")
+
+    def get_k8s_api_server(self):
+        """
+        Features: 获取k8s_api_server
+        :return: k8s_api_server
+        """
+        return self.__read_config(self.__envInfo, "k8s_api_server")
+
+    def get_k8s_api_token(self):
+        """
+        Features: 获取k8s_api_token
+        :return: k8s_api_token
+        """
+        return self.__read_config(self.__envInfo, "k8s_api_token")

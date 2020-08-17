@@ -89,6 +89,23 @@ class K8SHandler():
                 m_Pods.append(copy.copy(m_Pod))
         return m_Pods
 
+    def List_Pods_By_Labels(self, p_szNameSpace=None, labels=None):
+        r_pods = None
+
+        m_Pods = self.List_Pods(p_szNameSpace)
+
+        for pod in m_Pods:
+            matchNum = 0
+            for k1, v1 in labels.items():
+                for k2, v2 in pod.pod_labels.items():
+                    if k1 == k2 and v1 == v2:
+                        matchNum = matchNum + 1
+                        break
+            if matchNum == len(labels):
+                r_pods.append(pod)
+
+        return r_pods
+
     def UndoKubectlCommand(self, p_szJsonCommmand):
         k8s_custom_api = client.CustomObjectsApi()
         m_Group = p_szJsonCommmand["apiVersion"].split('/')[0]
