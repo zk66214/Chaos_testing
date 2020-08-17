@@ -1,4 +1,4 @@
-
+# -*- coding:utf-8 -*-
 
 class Pod(object):
     _pod_ip = None

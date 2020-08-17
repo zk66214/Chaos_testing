@@ -64,11 +64,57 @@ class LDB_ChaosTest():
                         }
                     },
                     "scheduler": {
-                        "cron": "@every 1m"
+                        "cron": "@every 1s"
                     }
                 }
-            }
+            },
+            'network-split':
+            {
+                "apiVersion": "chaos-mesh.org/v1alpha1",
+                "kind": "NetworkChaos",
+                "metadata": {
+                    "name": "network-partition-example",
+                    "namespace": "chaos-testing"
+                },
+                "spec": {
+                    "action": "partition",
+                    "mode": "one",
+                    "selector": {
+                        "pods": {
+                            "ldb-test": [
+                                "linkoopdb-database-2"
+                                ]
+                        }
+                    },
+                    "direction": "to",
+                    "target": {
+                        "selector": {
+                            "pods": {
+                                "ldb-test": [
+                                    "linkoopdb-database-2"
+                                ]
+                            }
+                        },
+                        "mode": "one",
+                    }
+                },
+                "duration": "10s",
+                "scheduler": {
+                    "cron": "@every 15s"
+                }
+            },
         }
+
+    def enable_pod_failure(self, p_szPodGroups, p_szNameSpace):
+        m_JsonCommand = self.CHAOS_COMMANDS['pod_failure']
+        m_Pods = self.m_K8SHandler.List_Pods(p_szNameSpace=p_szNameSpace)
+        m_TargetPods = []
+        for m_Pod in m_Pods:
+            if re.match(p_szPodGroups, m_Pod.pod_name):
+                m_TargetPods.append(m_Pod.pod_name)
+        m_JsonCommand['spec']['selector']['pods'][p_szNameSpace] = m_TargetPods
+
+        return self.m_K8SHandler.DoKubectlCommand(m_JsonCommand)
 
     def disable_pod_failure(self, p_szPodGroups, p_szNameSpace):
         m_JsonCommand = self.CHAOS_COMMANDS['pod_failure']
@@ -82,6 +128,9 @@ class LDB_ChaosTest():
         return self.m_K8SHandler.UndoKubectlCommand(m_JsonCommand)
 
     def pod_kill(self, p_szPodGroups, p_szNameSpace):
+        '''
+            pod_kill 是一个立即性动作，且不重复
+        '''
         m_JsonCommand = self.CHAOS_COMMANDS['pod_kill']
         m_Pods = self.m_K8SHandler.List_Pods(p_szNameSpace=p_szNameSpace)
         m_TargetPods = []
@@ -89,24 +138,45 @@ class LDB_ChaosTest():
             if re.match(p_szPodGroups, m_Pod.pod_name):
                 m_TargetPods.append(m_Pod.pod_name)
         m_JsonCommand['spec']['selector']['pods'][p_szNameSpace] = m_TargetPods
-        # 杀掉进程后，休息2S，随后取消掉杀进程的配置
-        resp = self.m_K8SHandler.DoKubectlCommand(m_JsonCommand)
-        print("resp = [" + str(resp) + "]")
-        time.sleep(2)
-        resp = self.m_K8SHandler.UndoKubectlCommand(m_JsonCommand)
-        print("resp = [" + str(resp) + "]")
 
-    def enable_pod_failure(self, p_szPodGroups, p_szNameSpace):
-        m_JsonCommand = self.CHAOS_COMMANDS['pod_failure']
+        # 杀掉进程后，休息3S，随后取消掉杀进程的配置
+        resp = self.m_K8SHandler.DoKubectlCommand(m_JsonCommand)
+        time.sleep(3)
+        resp = self.m_K8SHandler.UndoKubectlCommand(m_JsonCommand)
+
+    def enable_network_split(self, p_NodeGroups, p_TargetNodeGroups, p_szNameSpace):
+        m_JsonCommand = self.CHAOS_COMMANDS['network-split']
+
         m_Pods = self.m_K8SHandler.List_Pods(p_szNameSpace=p_szNameSpace)
+        m_SourcePods = []
         m_TargetPods = []
         for m_Pod in m_Pods:
-            if re.match(p_szPodGroups, m_Pod.pod_name):
+            if re.match(p_NodeGroups, m_Pod.pod_node):
+                m_SourcePods.append(m_Pod.pod_name)
+        for m_Pod in m_Pods:
+            if re.match(p_TargetNodeGroups, m_Pod.pod_node):
                 m_TargetPods.append(m_Pod.pod_name)
-        m_JsonCommand['spec']['selector']['pods'][p_szNameSpace] = m_TargetPods
+        m_JsonCommand['spec']['selector']['pods'][p_szNameSpace] = m_SourcePods
+        m_JsonCommand['spec']['target']['selector']['pods'][p_szNameSpace] = m_TargetPods
 
         return self.m_K8SHandler.DoKubectlCommand(m_JsonCommand)
 
+    def disable_network_split(self,  p_NodeGroups, p_TargetNodeGroups, p_szNameSpace):
+        m_JsonCommand = self.CHAOS_COMMANDS['network-split']
+
+        m_Pods = self.m_K8SHandler.List_Pods(p_szNameSpace=p_szNameSpace)
+        m_SourcePods = []
+        m_TargetPods = []
+        for m_Pod in m_Pods:
+            if re.match(p_NodeGroups, m_Pod.pod_node):
+                m_SourcePods.append(m_Pod.pod_name)
+        for m_Pod in m_Pods:
+            if re.match(p_TargetNodeGroups, m_Pod.pod_node):
+                m_TargetPods.append(m_Pod.pod_name)
+        m_JsonCommand['spec']['selector']['pods'][p_szNameSpace] = m_SourcePods
+        m_JsonCommand['spec']['target']['selector']['pods'][p_szNameSpace] = m_TargetPods
+
+        return self.m_K8SHandler.UndoKubectlCommand(m_JsonCommand)
 
 if __name__ == '__main__':
     '''
@@ -122,6 +192,9 @@ if __name__ == '__main__':
     m_ChaoTest.ConnectK8S(p_APIServer=APISERVER, p_Token=Token)
     # m_ChaoTest.enable_pod_failure("busybox.*", 'ldb-test')
     # m_ChaoTest.disable_pod_failure("busybox.*", 'ldb-test')
-    m_ChaoTest.pod_kill("busybox.*", 'ldb-test')
+    # m_ChaoTest.pod_kill("busybox.*", 'ldb-test')
+    print("resp = " + str(m_ChaoTest.enable_network_split("node67", "node65", 'ldb-test')))
+    time.sleep(60)
+    print("resp = " + str(m_ChaoTest.disable_network_split("node67", "node65", 'ldb-test')))
 
 

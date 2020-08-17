@@ -7,7 +7,7 @@ import sys
 import re
 import copy
 from common.Pod import Pod
-
+from common.Node import Node
 
 class K8SHandlerException(Exception):
     def __init__(self, message):
@@ -51,6 +51,18 @@ class K8SHandler():
 
         # 标记K8S已经连接
         self.Connected = True
+
+    def List_Nodes(self):
+        APIHandler = client.CoreV1Api()
+        ret = APIHandler.list_node()
+        m_Nodes = []
+
+        for i in ret.items:
+            m_Node = Node()
+            m_Node.node_name = i.metadata.name
+            m_Node.node_labels = i.metadata.labels
+            m_Nodes.append(copy.copy(m_Node))
+        return m_Nodes
 
     def List_Pods(self, p_szNameSpace=None):
         APIHandler = client.CoreV1Api()
@@ -133,5 +145,8 @@ if __name__ == '__main__':
         print("Status = " + row.pod_status)
         print("Labels = " + str(row.pod_labels))
 
+    for row in (m_K8SHandler.List_Nodes()):
+        print("Name = " + row.node_name)
+        print("Labels = " + str(row.node_labels))
 
 
