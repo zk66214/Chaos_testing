@@ -78,7 +78,7 @@ class K8SHandler():
         return m_Pods
 
     def List_Pods_By_Labels(self, p_szNameSpace=None, labels=None):
-        r_pods = []
+        r_pods = None
 
         m_Pods = self.List_Pods(p_szNameSpace)
 
