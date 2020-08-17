@@ -78,7 +78,7 @@ class LDB_ChaosTest():
                 },
                 "spec": {
                     "action": "partition",
-                    "mode": "one",
+                    "mode": "all",
                     "selector": {
                         "pods": {
                             "ldb-test": [
@@ -95,12 +95,39 @@ class LDB_ChaosTest():
                                 ]
                             }
                         },
-                        "mode": "one",
+                        "mode": "all",
                     }
                 },
                 "duration": "10s",
                 "scheduler": {
                     "cron": "@every 15s"
+                }
+            },
+            'network-delay':
+            {
+                "apiVersion": "chaos-mesh.org/v1alpha1",
+                "kind": "NetworkChaos",
+                "metadata": {
+                    "name": "web-show-network-delay",
+                    "namespace": "ldb-test"
+                },
+                "spec": {
+                    "action": "delay",
+                    "mode": "all",
+                    "selector": {
+                        "pods": {
+                            "ldb-test": [
+                                "linkoopdb-database-2"
+                                ]
+                        }
+                    },
+                    "delay": {
+                        "latency": "20ms"
+                    },
+                    "duration": "30s",
+                    "scheduler": {
+                        "cron": "@every 31s"
+                    }
                 }
             },
         }
@@ -156,8 +183,10 @@ class LDB_ChaosTest():
         for m_Pod in m_Pods:
             if re.match(p_TargetNodeGroups, m_Pod.pod_node):
                 m_TargetPods.append(m_Pod.pod_name)
-        m_JsonCommand['spec']['selector']['pods'][p_szNameSpace] = m_SourcePods
-        m_JsonCommand['spec']['target']['selector']['pods'][p_szNameSpace] = m_TargetPods
+
+        m_JsonCommand['metadata']['namespace'] = p_szNameSpace
+        m_JsonCommand['spec']['selector']['pods'] = {p_szNameSpace: m_SourcePods}
+        m_JsonCommand['spec']['target']['selector']['pods'] = {p_szNameSpace: m_TargetPods}
 
         return self.m_K8SHandler.DoKubectlCommand(m_JsonCommand)
 
@@ -173,9 +202,34 @@ class LDB_ChaosTest():
         for m_Pod in m_Pods:
             if re.match(p_TargetNodeGroups, m_Pod.pod_node):
                 m_TargetPods.append(m_Pod.pod_name)
-        m_JsonCommand['spec']['selector']['pods'][p_szNameSpace] = m_SourcePods
-        m_JsonCommand['spec']['target']['selector']['pods'][p_szNameSpace] = m_TargetPods
+        m_JsonCommand['metadata']['namespace'] = p_szNameSpace
+        m_JsonCommand['spec']['selector']['pods'] = {p_szNameSpace: m_SourcePods}
+        m_JsonCommand['spec']['target']['selector']['pods'] = {p_szNameSpace: m_TargetPods}
 
+        return self.m_K8SHandler.UndoKubectlCommand(m_JsonCommand)
+
+    def enable_network_delay(self, p_NodeGroups, p_szNameSpace):
+        m_JsonCommand = self.CHAOS_COMMANDS['network-delay']
+
+        m_Pods = self.m_K8SHandler.List_Pods(p_szNameSpace=p_szNameSpace)
+        m_SourcePods = []
+        for m_Pod in m_Pods:
+            if re.match(p_NodeGroups, m_Pod.pod_node):
+                m_SourcePods.append(m_Pod.pod_name)
+        m_JsonCommand['metadata']['namespace'] = p_szNameSpace
+        m_JsonCommand['spec']['selector']['pods'] = {p_szNameSpace: m_SourcePods}
+        return self.m_K8SHandler.DoKubectlCommand(m_JsonCommand)
+
+    def disable_network_delay(self,  p_NodeGroups, p_szNameSpace):
+        m_JsonCommand = self.CHAOS_COMMANDS['network-delay']
+
+        m_Pods = self.m_K8SHandler.List_Pods(p_szNameSpace=p_szNameSpace)
+        m_SourcePods = []
+        for m_Pod in m_Pods:
+            if re.match(p_NodeGroups, m_Pod.pod_node):
+                m_SourcePods.append(m_Pod.pod_name)
+        m_JsonCommand['metadata']['namespace'] = p_szNameSpace
+        m_JsonCommand['spec']['selector']['pods'] = {p_szNameSpace: m_SourcePods}
         return self.m_K8SHandler.UndoKubectlCommand(m_JsonCommand)
 
 if __name__ == '__main__':
@@ -193,8 +247,11 @@ if __name__ == '__main__':
     # m_ChaoTest.enable_pod_failure("busybox.*", 'ldb-test')
     # m_ChaoTest.disable_pod_failure("busybox.*", 'ldb-test')
     # m_ChaoTest.pod_kill("busybox.*", 'ldb-test')
-    print("resp = " + str(m_ChaoTest.enable_network_split("node67", "node65", 'ldb-test')))
-    time.sleep(60)
-    print("resp = " + str(m_ChaoTest.disable_network_split("node67", "node65", 'ldb-test')))
+    # print("resp = " + str(m_ChaoTest.enable_network_split("node67", "node65", 'ldb-test')))
+    # time.sleep(60)
+    # print("resp = " + str(m_ChaoTest.disable_network_split("node67", "node65", 'ldb-test')))
 
+    print("resp = " + str(m_ChaoTest.enable_network_delay("node67", 'ldb-test')))
+    time.sleep(60)
+    print("resp = " + str(m_ChaoTest.disable_network_delay("node67", 'ldb-test')))
 

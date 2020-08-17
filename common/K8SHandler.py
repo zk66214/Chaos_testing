@@ -64,6 +64,12 @@ class K8SHandler():
             m_Nodes.append(copy.copy(m_Node))
         return m_Nodes
 
+    def Describe_Pod(self, p_PodName, p_NameSpace=None):
+        APIHandler = client.CoreV1Api()
+        ret = APIHandler.read_namespaced_pod(name=p_PodName, namespace=p_NameSpace)
+        print("ret = [" + str(ret) + "]")
+
+
     def List_Pods(self, p_szNameSpace=None):
         APIHandler = client.CoreV1Api()
         ret = APIHandler.list_pod_for_all_namespaces(watch=False)
@@ -144,6 +150,7 @@ class K8SHandler():
             raise K8SHandlerException(str(ae.body))
         return True
 
+
 if __name__ == '__main__':
     '''
     APISERVER=$(kubectl config view --minify | grep server | cut -f 2- -d ":" | tr -d " ")
@@ -166,4 +173,4 @@ if __name__ == '__main__':
         print("Name = " + row.node_name)
         print("Labels = " + str(row.node_labels))
 
-
+    m_K8SHandler.Describe_Pod(p_PodName='busybox-psfmq', p_NameSpace='ldb-test')
