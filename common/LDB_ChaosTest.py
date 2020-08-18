@@ -11,6 +11,7 @@ class LDB_ChaosTestException(Exception):
         Exception.__init__(self)
         self.message = message
 
+
 class LDB_ChaosTest():
     def __init__(self):
         self.m_K8SHandler = None
@@ -26,7 +27,7 @@ class LDB_ChaosTest():
                 "kind": "PodChaos",
                 "metadata": {
                     "name": "pod-failure-example",
-                    "namespace": "chaos-testing"
+                    "namespace": "ldb-test"
                 },
                 "spec": {
                     "action": "pod-failure",
@@ -74,7 +75,7 @@ class LDB_ChaosTest():
                 "kind": "NetworkChaos",
                 "metadata": {
                     "name": "network-partition-example",
-                    "namespace": "chaos-testing"
+                    "namespace": "ldb-test"
                 },
                 "spec": {
                     "action": "partition",
@@ -141,7 +142,7 @@ class LDB_ChaosTest():
                 m_TargetPods.append(m_Pod.pod_name)
         m_JsonCommand['spec']['selector']['pods'][p_szNameSpace] = m_TargetPods
 
-        return self.m_K8SHandler.DoKubectlCommand(m_JsonCommand)
+        return self.m_K8SHandler.ApplyCustomObjectFromJson(m_JsonCommand)
 
     def disable_pod_failure(self, p_szPodGroups, p_szNameSpace):
         m_JsonCommand = self.CHAOS_COMMANDS['pod_failure']
@@ -152,7 +153,7 @@ class LDB_ChaosTest():
                 m_TargetPods.append(m_Pod.pod_name)
         m_JsonCommand['spec']['selector']['pods'][p_szNameSpace] = m_TargetPods
 
-        return self.m_K8SHandler.UndoKubectlCommand(m_JsonCommand)
+        return self.m_K8SHandler.DeleteCustomObjectFromJson(m_JsonCommand)
 
     def pod_kill(self, p_szPodGroups, p_szNameSpace):
         '''
@@ -167,9 +168,9 @@ class LDB_ChaosTest():
         m_JsonCommand['spec']['selector']['pods'][p_szNameSpace] = m_TargetPods
 
         # 杀掉进程后，休息3S，随后取消掉杀进程的配置
-        resp = self.m_K8SHandler.DoKubectlCommand(m_JsonCommand)
+        resp = self.m_K8SHandler.ApplyCustomObjectFromJson(m_JsonCommand)
         time.sleep(3)
-        resp = self.m_K8SHandler.UndoKubectlCommand(m_JsonCommand)
+        resp = self.m_K8SHandler.DeleteCustomObjectFromJson(m_JsonCommand)
 
     def enable_network_split(self, p_NodeGroups, p_TargetNodeGroups, p_szNameSpace):
         m_JsonCommand = self.CHAOS_COMMANDS['network-split']
@@ -188,7 +189,7 @@ class LDB_ChaosTest():
         m_JsonCommand['spec']['selector']['pods'] = {p_szNameSpace: m_SourcePods}
         m_JsonCommand['spec']['target']['selector']['pods'] = {p_szNameSpace: m_TargetPods}
 
-        return self.m_K8SHandler.DoKubectlCommand(m_JsonCommand)
+        return self.m_K8SHandler.ApplyCustomObjectFromJson(m_JsonCommand)
 
     def disable_network_split(self,  p_NodeGroups, p_TargetNodeGroups, p_szNameSpace):
         m_JsonCommand = self.CHAOS_COMMANDS['network-split']
@@ -206,7 +207,7 @@ class LDB_ChaosTest():
         m_JsonCommand['spec']['selector']['pods'] = {p_szNameSpace: m_SourcePods}
         m_JsonCommand['spec']['target']['selector']['pods'] = {p_szNameSpace: m_TargetPods}
 
-        return self.m_K8SHandler.UndoKubectlCommand(m_JsonCommand)
+        return self.m_K8SHandler.DeleteCustomObjectFromJson(m_JsonCommand)
 
     def enable_network_delay(self, p_NodeGroups, p_szNameSpace):
         m_JsonCommand = self.CHAOS_COMMANDS['network-delay']
@@ -218,7 +219,7 @@ class LDB_ChaosTest():
                 m_SourcePods.append(m_Pod.pod_name)
         m_JsonCommand['metadata']['namespace'] = p_szNameSpace
         m_JsonCommand['spec']['selector']['pods'] = {p_szNameSpace: m_SourcePods}
-        return self.m_K8SHandler.DoKubectlCommand(m_JsonCommand)
+        return self.m_K8SHandler.ApplyCustomObjectFromJson(m_JsonCommand)
 
     def disable_network_delay(self,  p_NodeGroups, p_szNameSpace):
         m_JsonCommand = self.CHAOS_COMMANDS['network-delay']
@@ -230,7 +231,39 @@ class LDB_ChaosTest():
                 m_SourcePods.append(m_Pod.pod_name)
         m_JsonCommand['metadata']['namespace'] = p_szNameSpace
         m_JsonCommand['spec']['selector']['pods'] = {p_szNameSpace: m_SourcePods}
-        return self.m_K8SHandler.UndoKubectlCommand(m_JsonCommand)
+        return self.m_K8SHandler.DeleteCustomObjectFromJson(m_JsonCommand)
+
+    def UndoAllChaos(self, p_NameSpace):
+        p_Group = 'chaos-mesh.org'
+        p_Version = 'v1alpha1'
+        p_Plural = 'networkchaos'
+        m_K8SCustomObjects = self.m_K8SHandler.DescribeCustomObject(
+            p_Group=p_Group,
+            p_Version=p_Version,
+            p_Plural = p_Plural,
+            p_NameSpace = p_NameSpace)
+        for m_K8SCustomObject in m_K8SCustomObjects:
+            self.m_K8SHandler.DeleteCustomObject(
+                p_Group=p_Group,
+                p_Version=p_Version,
+                p_Plural=p_Plural,
+                p_NameSpace=p_NameSpace,
+                p_Name=m_K8SCustomObject.name)
+
+        p_Plural = 'podchaos'
+        m_K8SCustomObjects = self.m_K8SHandler.DescribeCustomObject(
+            p_Group=p_Group,
+            p_Version=p_Version,
+            p_Plural=p_Plural,
+            p_NameSpace=p_NameSpace)
+        for m_K8SCustomObject in m_K8SCustomObjects:
+            self.m_K8SHandler.DeleteCustomObject(
+                p_Group=p_Group,
+                p_Version=p_Version,
+                p_Plural=p_Plural,
+                p_NameSpace=p_NameSpace,
+                p_Name=m_K8SCustomObject.name)
+
 
 if __name__ == '__main__':
     '''
@@ -251,7 +284,9 @@ if __name__ == '__main__':
     # time.sleep(60)
     # print("resp = " + str(m_ChaoTest.disable_network_split("node67", "node65", 'ldb-test')))
 
-    print("resp = " + str(m_ChaoTest.enable_network_delay("node67", 'ldb-test')))
-    time.sleep(60)
-    print("resp = " + str(m_ChaoTest.disable_network_delay("node67", 'ldb-test')))
+    # print("resp = " + str(m_ChaoTest.enable_network_delay("node67", 'ldb-test')))
+    # time.sleep(60)
+    # print("resp = " + str(m_ChaoTest.disable_network_delay("node67", 'ldb-test')))
+
+    m_ChaoTest.UndoAllChaos('ldb-test')
 

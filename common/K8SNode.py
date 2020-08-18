@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 
 
-class Node(object):
+class K8SNode(object):
     _node_name = None
     _node_labels = None
 

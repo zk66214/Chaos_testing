@@ -6,8 +6,10 @@ import urllib3
 import sys
 import re
 import copy
+import json
 from common.Pod import Pod
-from common.Node import Node
+from common.K8SNode import K8SNode
+from common.K8SCustomObject import K8SCustomObject
 
 class K8SHandlerException(Exception):
     def __init__(self, message):
@@ -58,17 +60,11 @@ class K8SHandler():
         m_Nodes = []
 
         for i in ret.items:
-            m_Node = Node()
+            m_Node = K8SNode()
             m_Node.node_name = i.metadata.name
             m_Node.node_labels = i.metadata.labels
             m_Nodes.append(copy.copy(m_Node))
         return m_Nodes
-
-    def Describe_Pod(self, p_PodName, p_NameSpace=None):
-        APIHandler = client.CoreV1Api()
-        ret = APIHandler.read_namespaced_pod(name=p_PodName, namespace=p_NameSpace)
-        print("ret = [" + str(ret) + "]")
-
 
     def List_Pods(self, p_szNameSpace=None):
         APIHandler = client.CoreV1Api()
@@ -112,7 +108,7 @@ class K8SHandler():
 
         return r_pods
 
-    def UndoKubectlCommand(self, p_szJsonCommmand):
+    def DeleteCustomObjectFromJson(self, p_szJsonCommmand):
         k8s_custom_api = client.CustomObjectsApi()
         m_Group = p_szJsonCommmand["apiVersion"].split('/')[0]
         m_Version = p_szJsonCommmand["apiVersion"].split('/')[1]
@@ -132,7 +128,21 @@ class K8SHandler():
             raise K8SHandlerException(str(ae.body))
         return True
 
-    def DoKubectlCommand(self, p_szJsonCommmand):
+    def DeleteCustomObject(self, p_Group, p_Version, p_Plural, p_NameSpace, p_Name):
+        k8s_custom_api = client.CustomObjectsApi()
+        try:
+            k8s_custom_api.delete_namespaced_custom_object(
+                namespace=p_NameSpace,
+                version=p_Version,
+                group=p_Group,
+                plural=p_Plural,
+                name=p_Name,
+                body=client.V1DeleteOptions())
+        except ApiException as ae:
+            raise K8SHandlerException(str(ae.body))
+        return True
+
+    def ApplyCustomObjectFromJson(self, p_szJsonCommmand):
         k8s_custom_api = client.CustomObjectsApi()
         m_Group = p_szJsonCommmand["apiVersion"].split('/')[0]
         m_Version = p_szJsonCommmand["apiVersion"].split('/')[1]
@@ -150,6 +160,25 @@ class K8SHandler():
             raise K8SHandlerException(str(ae.body))
         return True
 
+    def DescribeCustomObject(self, p_Group, p_Version, p_Plural, p_NameSpace):
+        k8s_custom_api = client.CustomObjectsApi()
+        ret = k8s_custom_api.list_namespaced_custom_object(
+            namespace=p_NameSpace,
+            version=p_Version,
+            group=p_Group,
+            plural=p_Plural)
+
+        m_K8SCustomObjects = []
+        for i in ret["items"]:
+            m_K8SCustomObject = K8SCustomObject()
+            m_K8SCustomObject.name = str(i['metadata']['name'])
+            m_K8SCustomObject.namespace = p_NameSpace
+            m_K8SCustomObject.group = p_Group
+            m_K8SCustomObject.version = p_Version
+            m_K8SCustomObject.plural = p_Plural
+            m_K8SCustomObjects.append(copy.copy(m_K8SCustomObject))
+        return m_K8SCustomObjects
+
 
 if __name__ == '__main__':
     '''
@@ -162,6 +191,8 @@ if __name__ == '__main__':
     Token = "eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLXdkdGY5Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiJmNTQ2MTJlNS1kZTE0LTExZWEtYjE1NC1kY2Y0MDFlNjgzMTgiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZS1zeXN0ZW06YWRtaW4tdXNlciJ9.FlGESV2KGiV7_So5YI4vHIwmQ7cwNy7SyTHoKPR_kPpnEL2T6bajdfr4GWHhanGTM7wWIzjHiqRSbhWpdepkEphJNkJ4gHxtxNvo5BkJDEJ_CM9iEbCSjbY3Q-Z1KDVFBjcJUo0zxlJT0VArJBWmBhq-k3s-9Cy3KwOdd7bEqN7kn6ozzmmGECeVbZg2Vq9epTmKDrbazZ_kFErm6EGOj41LZ_25f1vWtbKRBMt2ziajc8wqSxccEn9qglpAR4WbcVapK2lKJ5hWQYOsimhYReEwJhoBxIengP5w_tk0K90NgefKnxn9GnEHv4lHTaKuZWu2kPzSxQjGNPpG8yTesQ"
 
     m_K8SHandler = K8SHandler(p_APIServer=APISERVER, p_Token=Token)
+
+    '''
     for row in (m_K8SHandler.List_Pods()):
         print("Name = " + row.pod_name)
         print("pod_id = " + row.pod_ip)
@@ -172,5 +203,6 @@ if __name__ == '__main__':
     for row in (m_K8SHandler.List_Nodes()):
         print("Name = " + row.node_name)
         print("Labels = " + str(row.node_labels))
+    '''
 
-    m_K8SHandler.Describe_Pod(p_PodName='busybox-psfmq', p_NameSpace='ldb-test')
+    m_K8SHandler.DescribeCustomObject(p_Group='chaos-mesh.org', p_Version='v1alpha1', p_Plural='networkchaos', p_NameSpace='ldb-test')
